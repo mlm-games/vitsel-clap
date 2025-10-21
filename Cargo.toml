@@ -1,0 +1,23 @@
+[package]
+name = "vitsel"
+version = "1.0.2"
+edition = "2024"
+license = "MIT"
+authors = ["mlm-games"]
+description = "Vitsel: minimal Rust CLAP synth"
+repository = "https://github.com/mlm-games/vitsel-clap"
+readme = "README.md"
+categories = ["multimedia::audio", "multimedia::audio::plugins"]
+keywords = ["clap", "synth", "audio", "android", "nih-plug"]
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+nih_plug = { git = "https://github.com/robbert-vdh/nih-plug", branch = "master" }
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+opt-level = "s"
+panic = "abort"
