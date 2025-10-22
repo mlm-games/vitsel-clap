@@ -22,7 +22,7 @@ cp target/aarch64-linux-android/release/libvitsel.so Vitsel.clap
 
 Use with yadaw (Android)
 - Put Vitsel.clap in a directory yadaw scans, e.g.:
-  - /storage/emulated/0/Android/data/<your.yadaw.package>/files/plugins/clap/ (yadaw supports it by copying it from external to internal, since ewer android devices open everything under storage/emulated/0 in noexec mode)
+  - /storage/emulated/0/Android/data/<your.yadaw.package>/files/plugins/clap/ (need adb or shizuku access, yadaw supports it by copying it from external to internal, since newer android devices open everything under storage/emulated/0 in noexec mode)
   - Create a folder that ends with .clap and put the .so file in the folder (compiled file from the binary, rename the .clap file to .so if you ran the cp step given above)
   - or your app-internal: /data/data/<your.yadaw.package>/files/plugins/clap/ (need root perms, similar naming scheme as above)
 <!-- - In yadaw, set additional plugin search paths if you added UI to configure them. -->
