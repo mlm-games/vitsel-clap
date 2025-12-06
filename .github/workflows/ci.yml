@@ -10,9 +10,7 @@ jobs:
     - uses: actions/checkout@v4
     - uses: dtolnay/rust-toolchain@stable
     - run: cargo build --release
-    - run: |
-        mkdir -p Vitsel.clap
-        cp target/release/libvitsel.so Vitsel.clap
+    - run: cp target/release/libvitsel.so Vitsel.clap
     - uses: actions/upload-artifact@v4
       with: { name: vitsel-linux, path: Vitsel.clap }
 
@@ -23,9 +21,7 @@ jobs:
     - uses: dtolnay/rust-toolchain@stable
     - run: cargo build --release
     - shell: bash
-      run: |
-        mkdir -p Vitsel.clap
-        cp target/release/vitsel.dll Vitsel.clap/
+      run: cp target/release/vitsel.dll Vitsel.clap
     - uses: actions/upload-artifact@v4
       with: { name: vitsel-windows, path: Vitsel.clap }
 
@@ -45,8 +41,7 @@ jobs:
       run: |
         cargo install cargo-ndk --locked
         cargo ndk -t arm64-v8a --platform 26 build --release
-        mkdir -p Vitsel.clap
-        cp target/aarch64-linux-android/release/libvitsel.so Vitsel.clap/
+        cp target/aarch64-linux-android/release/libvitsel.so Vitsel.clap
     - uses: actions/upload-artifact@v4
       with: { name: vitsel-android-arm64, path: Vitsel.clap }
 
@@ -61,12 +56,12 @@ jobs:
         path: artifacts
     - name: Prepare release assets
       run: |
-        cd artifacts/vitsel-linux && zip -r ../vitsel-linux.zip Vitsel.clap
-        cd ../vitsel-windows && zip -r ../vitsel-windows.zip Vitsel.clap
-        cd ../vitsel-android-arm64 && zip -r ../vitsel-android-arm64.zip Vitsel.clap
+        mv artifacts/vitsel-linux/Vitsel.clap Vitsel-linux.clap
+        mv artifacts/vitsel-windows/Vitsel.clap Vitsel-windows.clap
+        mv artifacts/vitsel-android-arm64/Vitsel.clap Vitsel-android-arm64.clap
     - uses: softprops/action-gh-release@v2
       with:
         files: |
-          artifacts/vitsel-linux.zip
-          artifacts/vitsel-windows.zip
-          artifacts/vitsel-android-arm64.zip
+          Vitsel-linux.clap
+          Vitsel-windows.clap
+          Vitsel-android-arm64.clap
