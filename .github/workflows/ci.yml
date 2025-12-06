@@ -37,10 +37,11 @@ jobs:
     - run: rustup target add aarch64-linux-android
     - name: Install NDK (LTS)
       uses: nttld/setup-ndk@v1
+      id: setup-ndk
       with: { ndk-version: r27d }
     - name: Build
       env:
-        ANDROID_NDK_HOME: ${{ env.ANDROID_NDK_ROOT }}
+        ANDROID_NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
       run: |
         cargo install cargo-ndk --locked
         cargo ndk -t arm64-v8a --platform 26 build --release
