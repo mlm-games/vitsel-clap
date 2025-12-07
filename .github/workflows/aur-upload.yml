@@ -1,0 +1,140 @@
+name: Publish to AUR
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+jobs:
+  update-aur:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Get version from release
+        id: version
+        shell: bash
+        run: |
+          set -euo pipefail
+          
+          if [[ "${{ github.event_name }}" == "release" ]]; then
+            VERSION="${{ github.event.release.tag_name }}"
+          else
+            VERSION=$(curl -sf "https://api.github.com/repos/${{ github.repository }}/releases/latest" | jq -r '.tag_name')
+          fi
+          
+          VERSION="${VERSION#v}"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Detected version: $VERSION"
+
+      - name: Download CLAP from release
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION="${{ steps.version.outputs.version }}"
+          mkdir -p downloads
+          
+          DOWNLOADED=false
+          for TAG in "$VERSION" "v$VERSION"; do
+            URL="https://github.com/${{ github.repository }}/releases/download/${TAG}/Vitsel-linux.clap"
+            if curl --output /dev/null --silent --head --fail "$URL"; then
+              wget -O "downloads/Vitsel-linux.clap" "$URL"
+              DOWNLOADED=true
+              break
+            fi
+          done
+          
+          if [[ "$DOWNLOADED" != "true" ]]; then
+            echo "Failed to download CLAP binary"
+            exit 1
+          fi
+
+      - name: Calculate SHA256 checksum
+        id: checksums
+        shell: bash
+        run: |
+          set -euo pipefail
+          HASH=$(sha256sum "downloads/Vitsel-linux.clap" | cut -d ' ' -f 1)
+          echo "hash=$HASH" >> "$GITHUB_OUTPUT"
+
+      - name: Get current AUR package info and determine pkgrel
+        id: pkgrel
+        shell: bash
+        run: |
+          set -euo pipefail
+          
+          NEW_VERSION="${{ steps.version.outputs.version }}"
+          
+          PKGBUILD=$(curl -sf "https://aur.archlinux.org/cgit/aur.git/plain/PKGBUILD?h=vitsel-clap-bin" 2>/dev/null || echo "")
+          
+          if [[ -n "$PKGBUILD" ]]; then
+            CURRENT_VER=$(echo "$PKGBUILD" | grep "^pkgver=" | head -1 | cut -d= -f2 | tr -d "'" | tr -d '"' | tr -d ' ')
+            CURRENT_PKGREL=$(echo "$PKGBUILD" | grep "^pkgrel=" | head -1 | cut -d= -f2 | tr -d "'" | tr -d '"' | tr -d ' ')
+            echo "Found existing AUR package: version=$CURRENT_VER, pkgrel=$CURRENT_PKGREL"
+          else
+            CURRENT_VER=""
+            CURRENT_PKGREL="0"
+            echo "No existing AUR package found"
+          fi
+          
+          if ! [[ "$CURRENT_PKGREL" =~ ^[0-9]+$ ]]; then
+            CURRENT_PKGREL=0
+          fi
+          
+          if [[ "$NEW_VERSION" == "$CURRENT_VER" ]]; then
+            NEW_PKGREL=$((CURRENT_PKGREL + 1))
+          else
+            NEW_PKGREL=1
+          fi
+          
+          echo "pkgrel=$NEW_PKGREL" >> "$GITHUB_OUTPUT"
+
+      - name: Create PKGBUILD
+        shell: bash
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          PKGREL="${{ steps.pkgrel.outputs.pkgrel }}"
+          HASH="${{ steps.checksums.outputs.hash }}"
+          
+          mkdir -p aur-package
+          cat > aur-package/PKGBUILD << 'EOF'
+          # Maintainer: MLM-stuff <gfxoxinzh@mozmail.com>
+          pkgname=vitsel-clap-bin
+          _pkgname=vitsel
+          pkgver={{VER}}
+          pkgrel={{PKGREL}}
+          pkgdesc="Minimal Rust CLAP synth with PolyBLEP oscillators, ADSR, and zero-delay TPT SVF"
+          arch=('x86_64')
+          url="https://github.com/mlm-games/vitsel-clap"
+          license=('MIT')
+          depends=('glibc')
+          optdepends=('clap-host: A CLAP host to load the plugin (not required by yadaw)')
+          provides=('vitsel-clap')
+          conflicts=('vitsel-clap')
+          options=('!strip')
+
+          source=("Vitsel-${pkgver}.clap::https://github.com/mlm-games/vitsel-clap/releases/download/v${pkgver}/Vitsel-linux.clap")
+          sha256sums=('{{HASH}}')
+
+          package() {
+            install -Dm755 "${srcdir}/Vitsel-${pkgver}.clap" \
+              "${pkgdir}/usr/lib/clap/Vitsel.clap"
+          }
+          EOF
+
+          sed -i "s/{{VER}}/${VERSION}/g" aur-package/PKGBUILD
+          sed -i "s/{{PKGREL}}/${PKGREL}/g" aur-package/PKGBUILD
+          sed -i "s/{{HASH}}/${HASH}/g" aur-package/PKGBUILD
+          
+          echo "Generated PKGBUILD:"
+          cat aur-package/PKGBUILD
+
+      - name: Publish to AUR
+        uses: KSXGitHub/github-actions-deploy-aur@master
+        with:
+          pkgname: vitsel-clap-bin
+          pkgbuild: aur-package/PKGBUILD
+          commit_username: mlm-games
+          commit_email: ${{ secrets.AUR_EMAIL }}
+          ssh_private_key: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
+          commit_message: "Update to v${{ steps.version.outputs.version }}-${{ steps.pkgrel.outputs.pkgrel }}"
