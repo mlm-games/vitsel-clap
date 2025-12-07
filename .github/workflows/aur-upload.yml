@@ -134,7 +134,7 @@ jobs:
         with:
           pkgname: vitsel-clap-bin
           pkgbuild: aur-package/PKGBUILD
-          commit_username: mlm-games
-          commit_email: ${{ secrets.AUR_EMAIL }}
+          commit_username: MLM-stuff
+          commit_email: gfxoxinzh@mozmail.com
           ssh_private_key: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
           commit_message: "Update to v${{ steps.version.outputs.version }}-${{ steps.pkgrel.outputs.pkgrel }}"
