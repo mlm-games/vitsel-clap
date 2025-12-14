@@ -55,43 +55,10 @@ jobs:
           HASH=$(sha256sum "downloads/Vitsel-linux.clap" | cut -d ' ' -f 1)
           echo "hash=$HASH" >> "$GITHUB_OUTPUT"
 
-      - name: Get current AUR package info and determine pkgrel
-        id: pkgrel
-        shell: bash
-        run: |
-          set -euo pipefail
-          
-          NEW_VERSION="${{ steps.version.outputs.version }}"
-          
-          PKGBUILD=$(curl -sf "https://aur.archlinux.org/cgit/aur.git/plain/PKGBUILD?h=vitsel-clap-bin" 2>/dev/null || echo "")
-          
-          if [[ -n "$PKGBUILD" ]]; then
-            CURRENT_VER=$(echo "$PKGBUILD" | grep "^pkgver=" | head -1 | cut -d= -f2 | tr -d "'" | tr -d '"' | tr -d ' ')
-            CURRENT_PKGREL=$(echo "$PKGBUILD" | grep "^pkgrel=" | head -1 | cut -d= -f2 | tr -d "'" | tr -d '"' | tr -d ' ')
-            echo "Found existing AUR package: version=$CURRENT_VER, pkgrel=$CURRENT_PKGREL"
-          else
-            CURRENT_VER=""
-            CURRENT_PKGREL="0"
-            echo "No existing AUR package found"
-          fi
-          
-          if ! [[ "$CURRENT_PKGREL" =~ ^[0-9]+$ ]]; then
-            CURRENT_PKGREL=0
-          fi
-          
-          if [[ "$NEW_VERSION" == "$CURRENT_VER" ]]; then
-            NEW_PKGREL=$((CURRENT_PKGREL + 1))
-          else
-            NEW_PKGREL=1
-          fi
-          
-          echo "pkgrel=$NEW_PKGREL" >> "$GITHUB_OUTPUT"
-
       - name: Create PKGBUILD
         shell: bash
         run: |
           VERSION="${{ steps.version.outputs.version }}"
-          PKGREL="${{ steps.pkgrel.outputs.pkgrel }}"
           HASH="${{ steps.checksums.outputs.hash }}"
           
           mkdir -p aur-package
@@ -100,7 +67,7 @@ jobs:
           pkgname=vitsel-clap-bin
           _pkgname=vitsel
           pkgver={{VER}}
-          pkgrel={{PKGREL}}
+          pkgrel=1
           pkgdesc="Minimal Rust CLAP synth with PolyBLEP oscillators, ADSR, and zero-delay TPT SVF"
           arch=('x86_64')
           url="https://github.com/mlm-games/vitsel-clap"
@@ -121,18 +88,18 @@ jobs:
           EOF
 
           sed -i "s/{{VER}}/${VERSION}/g" aur-package/PKGBUILD
-          sed -i "s/{{PKGREL}}/${PKGREL}/g" aur-package/PKGBUILD
           sed -i "s/{{HASH}}/${HASH}/g" aur-package/PKGBUILD
           
           echo "Generated PKGBUILD:"
           cat aur-package/PKGBUILD
 
       - name: Publish to AUR
-        uses: KSXGitHub/github-actions-deploy-aur@master
+        uses: mlm-games/aur-deploy-action@master
         with:
           pkgname: vitsel-clap-bin
           pkgbuild: aur-package/PKGBUILD
+          auto_pkgrel: 'true'
           commit_username: MLM-stuff
           commit_email: gfxoxinzh@mozmail.com
           ssh_private_key: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
-          commit_message: "Update to v${{ steps.version.outputs.version }}-${{ steps.pkgrel.outputs.pkgrel }}"
+          commit_message: "Update to v${{ steps.version.outputs.version }}"
