@@ -20,7 +20,7 @@ cargo ndk -t arm64-v8a --platform 26 build --release
 cp target/aarch64-linux-android/release/libvitsel.so Vitsel.clap
 ```
 
-Use with yadaw (Android)
+Use with yadaw < 0.8.6 (Android) (Newer versions allow directly importing via the plugin manager)
 - Put Vitsel.clap in a directory yadaw scans, e.g.:
   - /storage/emulated/0/Android/data/<your.yadaw.package>/files/plugins/clap/ (need adb or shizuku access, yadaw supports it by copying it from external to internal, since newer android devices open everything under storage/emulated/0 in noexec mode)
   - Create a folder that ends with .clap and put the .so file in the folder (compiled file from the binary, rename the .clap file to .so if you ran the cp step given above)
